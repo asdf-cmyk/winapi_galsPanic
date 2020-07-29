@@ -6,7 +6,7 @@
 #include "movingPoint.h"
 //#include <commdlg.h>
 
-#pragma comment(lib, "msimg32.lib");
+#pragma comment(lib, "msimg32.lib")
 
 #define MAX_LOADSTRING 100
 
@@ -20,31 +20,21 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 HBITMAP hBackImage, hBackImage2;
 BITMAP bitBack, bitBack2;
-
 HBITMAP hTransparentImage;
 BITMAP bitTransparent;
-
 HBITMAP hAniImage;
 BITMAP bitAni;
-//const int Sprite_Size_X = 57;
-//const int Sprite_Size_Y = 52;
-//int Run_Frame_Max = 0;
-//int Run_Frame_Min = 0;
-//int cur_Frame = Run_Frame_Min;
-//int keyDown = 0;
-//int distance = 0;
-//int yStart = 0;
-//int framePlus = Run_Frame_Min;
 
 bool sizeChangeFlag = 0;
 
 TCHAR sKeyState[128];
 vector<POINT> polyCont;
-vector<POINT> moveCont;
+//vector<POINT> moveCont;
 POINT ptPool[1360];
 POINT moveT, tmp;
 
 movingPoint player;
+POINT tmpVec = { 0, 0 };
 
 RECT rectView;
 RECT rectView2;
@@ -169,23 +159,22 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-
-    switch (message)
+	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF || _CRTDBG_LEAK_CHECK_DF);
+	//_CrtSetBreakAlloc(203);
+	switch (message)
     {
 	case WM_CREATE:
 		CreateBitmap();
-		//SetTimer(hWnd, 123, 100, AniProc);
 		SetTimer(hWnd, 111, 100, KeyStateProc);
 		GetClientRect(hWnd, &rectView);
-		GetWindowRect(hWnd, &rectView2);
-		polyCont.push_back({ 500, 300 });
-		polyCont.push_back({ 700, 300 });
-		polyCont.push_back({ 700, 400 });
-		polyCont.push_back({ 500, 400 });
-		moveT = polyCont[3];
+		polyCont.push_back({ 400, 200 });
+		polyCont.push_back({ 800, 200 });
+		polyCont.push_back({ 800, 500 });
+		polyCont.push_back({ 400, 500 });
+		moveT = polyCont[0];
 		tmp = moveT;
 
-		player.setPosition(polyCont[3]);
+		//player.pushMovPtPool(polyCont[0]);
 		break;
     case WM_COMMAND:
         {
@@ -205,38 +194,37 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
 	case WM_KEYDOWN:
-		switch (wParam)
-		{
-		//case VK_DOWN:
-		//	moveT.y += 1;
-
-		/*case 'A':
-			framePlus = 0;
-			yStart = Sprite_Size_Y;
-			keyDown = -8;
-			break;
-		case 'D':
-			framePlus = 0;
-			yStart = 0;
-			keyDown = 8;
-			break;*/
-		}
-		break;
-	case WM_KEYUP:
 		/*switch (wParam)
 		{
-		case 'A':
-		case 'D':
-			keyDown = 0;
+		case VK_LEFT:
+			if (!(player.getPtVec().x != 1 &&
+				player.getPtVec().y == 0))
+				moveT.x -= 1;
+			break;
+		case VK_UP:
+			if (!(player.getPtVec().x == 0 &&
+				player.getPtVec().y != 1))
+				moveT.y -= 1;
+			break;
+		case VK_RIGHT:
+			if (!(player.getPtVec().x != -1 &&
+				player.getPtVec().y == 0))
+				moveT.x += 1;
+			break;
+		case VK_DOWN:
+			if (!(player.getPtVec().x == 0 &&
+				player.getPtVec().y != -1))
+				moveT.y += 1;
 			break;
 		}*/
+		break;
+	case WM_KEYUP:
 		break;
 	case WM_PAINT:
 	{
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code that uses hdc here...
-		//DrawBitmap(hWnd, hdc);
 		DrawBitmapDoubleBuffering(hWnd, hdc);
 		DrawRectText(hdc);
 
@@ -246,6 +234,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 		DeleteBitmap();
 		PostQuitMessage(0);
+		polyCont.clear();
+		//_CrtDumpMemoryLeaks();
 		break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -297,14 +287,6 @@ void CreateBitmap()
 			IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
 		GetObject(hBackImage2, sizeof(BITMAP), &bitBack2);
 	}
-	/*{
-	hAniImage = (HBITMAP)LoadImage(NULL, TEXT("images/zero_run.bmp"),
-	IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
-	GetObject(hAniImage, sizeof(BITMAP), &bitAni);
-	Run_Frame_Max = bitAni.bmWidth / Sprite_Size_X - 1;
-	Run_Frame_Min = 2;
-	cur_Frame = Run_Frame_Min;
-	}*/
 }
 
 void DrawBitmapDoubleBuffering(HWND hWnd, HDC hdc)
@@ -348,7 +330,11 @@ void DrawBitmapDoubleBuffering(HWND hWnd, HDC hdc)
 		
 		for (unsigned int i = 0; i < polyCont.size(); i++)
 			ptPool[i] = polyCont[i];
-		Polygon(hMemDC2, ptPool, polyCont.size());
+		/*ptPool[4] = { polyCont[3].x, polyCont[3].y - 10 };
+		ptPool[5] = { ptPool[4].x - 80, ptPool[4].y };
+		ptPool[6] = { ptPool[5].x, ptPool[5].y - 30 };
+		ptPool[7] = { ptPool[6].x + 80, ptPool[6].y };*/
+		Polygon(hMemDC2, ptPool, polyCont.size()/*+4*/);
 
 		TransparentBlt(hMemDC, 0, 0, bx, by, hMemDC2,
 			0, 0, bx, by, RGB(255, 0, 255));
@@ -356,28 +342,15 @@ void DrawBitmapDoubleBuffering(HWND hWnd, HDC hdc)
 		DeleteObject(myBrush);
 
 		//POINT tmp = moveT;
-		MoveToEx(hMemDC, tmp.x, tmp.y, NULL);
-		LineTo(hMemDC, moveT.x, moveT.y);
-
+		//if(player.getPtCont().size()>0)
+		/*POINT tmpStart = player.getPtCont()[player.getPtCont().size()-1];
+		MoveToEx(hMemDC, tmpStart.x, tmpStart.y, NULL);
+		LineTo(hMemDC, moveT.x, moveT.y);*/
+		player.show(hMemDC, moveT);
 
 		SelectObject(hMemDC2, hOldBitmap2);
 		DeleteDC(hMemDC2);
 	}
-	//{
-	//	hMemDC2 = CreateCompatibleDC(hMemDC);
-	//	hOldBitmap2 = (HBITMAP)SelectObject(hMemDC2, hAniImage);
-	//	bx = bitAni.bmWidth / 16;
-	//	by = bitAni.bmHeight / 2;
-
-	//	int xStart = cur_Frame * bx;
-	//	//int yStart = 0;
-	//	distance += keyDown;
-	//	TransparentBlt(hMemDC, 200 + distance, 100, bx * 4, by * 4,
-	//		hMemDC2, xStart, yStart, bx, by, RGB(255, 0, 255));
-
-	//	SelectObject(hMemDC2, hOldBitmap2);
-	//	DeleteDC(hMemDC2);
-	//}
 
 	BitBlt(hdc, 0, 0, rectView.right, rectView.bottom,
 		hMemDC, 0, 0, SRCCOPY);
@@ -385,18 +358,6 @@ void DrawBitmapDoubleBuffering(HWND hWnd, HDC hdc)
 
 	DeleteDC(hMemDC);
 }
-
-//void territory(HDC hMemDC2, POINT& b)
-//{
-//	HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(255, 0, 255));
-//	HBRUSH oldBrush = (HBRUSH)SelectObject(hMemDC2, myBrush);
-//	Rectangle(hMemDC2, 500, 300, 700, 400);
-//
-//	TransparentBlt(hMemDC, 0, 0, bx, by, hMemDC2,
-//		0, 0, bx, by, RGB(255, 0, 255));
-//	SelectObject(hMemDC2, oldBrush);
-//	DeleteObject(myBrush);
-//}
 
 void DeleteBitmap()
 {
@@ -406,39 +367,49 @@ void DeleteBitmap()
 
 VOID CALLBACK KeyStateProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 {
-	/*if (GetKeyState('A') & 0x8000)
+	player.collision(moveT, polyCont);
+	bool test = player.getCollidState();
+	LONG test2 = player.getPtVec().x;
+	LONG test3 = player.getPtVec().y;
+	if (player.getCollidState()/* &&
+		(player.getPtVec().x != 0 || player.getPtVec().y != 0)*/)
 	{
-	wsprintf(sKeyState, TEXT("%s"), _T("A-Key"));
+		//player.mergePoly();
+		return;
 	}
-	else if (GetKeyState('S') & 0x8000)
-	{
-	wsprintf(sKeyState, TEXT("%s"), _T("S-Key"));
-	}
-	else if (GetKeyState('D') & 0x8000)
-	{
-	wsprintf(sKeyState, TEXT("%s"), _T("D-Key"));
-	}
-	else if (GetKeyState('W') & 0x8000)
-	{
-	wsprintf(sKeyState, TEXT("%s"), _T("W-Key"));
-	}*/
-
+	int movFlag = 0;
+	//POINT tmpVec;
 	if (GetKeyState(VK_LEFT) & 0x8000)
 	{
-		wsprintf(sKeyState, TEXT("%s"), _T("LEFT-Key"));
+		//player.isVertexStart(moveT, polyCont);
+		movFlag = 1;
+		//if (!player.getPoolSz())
+			tmpVec = { -1, 0 };
+		//player.isVertexStart(moveT, tmpVec, polyCont);
 	}
 	else if (GetKeyState(VK_UP) & 0x8000)
 	{
-		wsprintf(sKeyState, TEXT("%s"), _T("UP-Key"));
+		//player.isVertexStart(moveT, polyCont);
+		movFlag = 2;
+		//if (!player.getPoolSz())
+			tmpVec = { 0, -1 };
+		//player.isVertexStart(moveT, polyCont);
 	}
 	else if (GetKeyState(VK_RIGHT) & 0x8000)
 	{
-		wsprintf(sKeyState, TEXT("%s"), _T("RIGHT-Key"));
+		//player.isVertexStart(moveT, polyCont);
+		movFlag = 3;
+		//if (!player.getPoolSz())
+			tmpVec = { 1, 0 };
+		//player.isVertexStart(moveT, polyCont);
 	}
 	else if (GetKeyState(VK_DOWN) & 0x8000)
 	{
-		wsprintf(sKeyState, TEXT("%s"), _T("DOWN-Key"));
-		moveT.y += 1;
+		//player.isVertexStart(moveT, polyCont);
+		movFlag = 4;
+		//if (!player.getPoolSz())
+			tmpVec = { 0, 1 };
+		//player.isVertexStart(moveT, polyCont);
 	}
 	else if ((GetKeyState(VK_LEFT) & 0x8000) && (GetKeyState(VK_UP) & 0x8000))
 	{
@@ -448,22 +419,10 @@ VOID CALLBACK KeyStateProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 	{
 		wsprintf(sKeyState, TEXT(""));
 	}
+	//player.isVertexStart(moveT, polyCont);
+	//player.setPtVec(tmp);
+	player.move(moveT, tmpVec, movFlag);
+	//player.collision(moveT, polyCont);
+
 	InvalidateRgn(hWnd, NULL, false);
 }
-
-//void UpdateFrame(HWND hWnd)
-//{
-//	cur_Frame += (abs(keyDown) / 8) % (Run_Frame_Max - 1);
-//	if (cur_Frame > Run_Frame_Max)
-//		cur_Frame = Run_Frame_Min;
-//}
-//
-//VOID CALLBACK AniProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
-//{
-//	UpdateFrame(hWnd);
-//	InvalidateRgn(hWnd, NULL, false);
-//	//return VOID();
-//
-//	yPos += 5;
-//	if (yPos > rectView.bottom) yPos = 0;
-//}
