@@ -28,10 +28,12 @@ BITMAP bitAni;
 bool sizeChangeFlag = 0;
 
 TCHAR sKeyState[128];
-vector<POINT> polyCont;
-//vector<POINT> moveCont;
-POINT ptPool[1360];
+vector<POINT> polyVertexCont;
+POINT vertexPool[1360];
+//bool vertexLine[1360][5];
 POINT moveT, tmp;
+
+vector<polyLine> polyLineCont;
 
 movingPoint player;
 POINT tmpVec = { 0, 0 };
@@ -50,6 +52,7 @@ void DeleteBitmap();
 //VOID CALLBACK AniProc(HWND, UINT, UINT, DWORD);
 VOID CALLBACK KeyStateProc(HWND, UINT, UINT, DWORD);
 //void territory(HDC, POINT&);
+void poolSync();
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -167,14 +170,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		CreateBitmap();
 		SetTimer(hWnd, 111, 100, KeyStateProc);
 		GetClientRect(hWnd, &rectView);
-		polyCont.push_back({ 400, 200 });
-		polyCont.push_back({ 800, 200 });
-		polyCont.push_back({ 800, 500 });
-		polyCont.push_back({ 400, 500 });
-		moveT = polyCont[0];
+		polyVertexCont.push_back({ 400, 200 });
+		polyVertexCont.push_back({ 800, 200 });
+		polyVertexCont.push_back({ 800, 500 });
+		polyVertexCont.push_back({ 400, 500 });
+		moveT = polyVertexCont[0];
 		tmp = moveT;
 
-		//player.pushMovPtPool(polyCont[0]);
+		poolSync();
+		//player.pushMovPtPool(polyVertexCont[0]);
 		break;
     case WM_COMMAND:
         {
@@ -234,7 +238,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 		DeleteBitmap();
 		PostQuitMessage(0);
-		polyCont.clear();
+		polyVertexCont.clear();
 		//_CrtDumpMemoryLeaks();
 		break;
     default:
@@ -324,28 +328,16 @@ void DrawBitmapDoubleBuffering(HWND hWnd, HDC hdc)
 		bx = bitBack2.bmWidth;
 		by = bitBack2.bmHeight;
 
-
 		HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(255, 0, 255));
 		HBRUSH oldBrush = (HBRUSH)SelectObject(hMemDC2, myBrush);
 		
-		for (unsigned int i = 0; i < polyCont.size(); i++)
-			ptPool[i] = polyCont[i];
-		/*ptPool[4] = { polyCont[3].x, polyCont[3].y - 10 };
-		ptPool[5] = { ptPool[4].x - 80, ptPool[4].y };
-		ptPool[6] = { ptPool[5].x, ptPool[5].y - 30 };
-		ptPool[7] = { ptPool[6].x + 80, ptPool[6].y };*/
-		Polygon(hMemDC2, ptPool, polyCont.size()/*+4*/);
+		Polygon(hMemDC2, vertexPool, polyVertexCont.size());
 
 		TransparentBlt(hMemDC, 0, 0, bx, by, hMemDC2,
 			0, 0, bx, by, RGB(255, 0, 255));
 		SelectObject(hMemDC2, oldBrush);
 		DeleteObject(myBrush);
 
-		//POINT tmp = moveT;
-		//if(player.getPtCont().size()>0)
-		/*POINT tmpStart = player.getPtCont()[player.getPtCont().size()-1];
-		MoveToEx(hMemDC, tmpStart.x, tmpStart.y, NULL);
-		LineTo(hMemDC, moveT.x, moveT.y);*/
 		player.show(hMemDC, moveT);
 
 		SelectObject(hMemDC2, hOldBitmap2);
@@ -367,49 +359,35 @@ void DeleteBitmap()
 
 VOID CALLBACK KeyStateProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 {
-	player.collision(moveT, polyCont);
-	bool test = player.getCollidState();
-	LONG test2 = player.getPtVec().x;
-	LONG test3 = player.getPtVec().y;
-	if (player.getCollidState()/* &&
+	player.collision(moveT, polyVertexCont);
+	if (player.getCollidState() /* &&
 		(player.getPtVec().x != 0 || player.getPtVec().y != 0)*/)
 	{
-		//player.mergePoly();
-		return;
+		player.mergePoly(polyVertexCont, polyLineCont);
+		poolSync();
+		//return;
 	}
-	int movFlag = 0;
-	//POINT tmpVec;
+	int movFlag = -1;
+	//POINT tmpVec = { 0, 0 };
 	if (GetKeyState(VK_LEFT) & 0x8000)
 	{
-		//player.isVertexStart(moveT, polyCont);
-		movFlag = 1;
-		//if (!player.getPoolSz())
-			tmpVec = { -1, 0 };
-		//player.isVertexStart(moveT, tmpVec, polyCont);
+		movFlag = 0;
+		tmpVec = { -1, 0 };
 	}
 	else if (GetKeyState(VK_UP) & 0x8000)
 	{
-		//player.isVertexStart(moveT, polyCont);
-		movFlag = 2;
-		//if (!player.getPoolSz())
-			tmpVec = { 0, -1 };
-		//player.isVertexStart(moveT, polyCont);
+		movFlag = 1;
+		tmpVec = { 0, -1 };
 	}
 	else if (GetKeyState(VK_RIGHT) & 0x8000)
 	{
-		//player.isVertexStart(moveT, polyCont);
-		movFlag = 3;
-		//if (!player.getPoolSz())
-			tmpVec = { 1, 0 };
-		//player.isVertexStart(moveT, polyCont);
+		movFlag = 2;
+		tmpVec = { 1, 0 };
 	}
 	else if (GetKeyState(VK_DOWN) & 0x8000)
 	{
-		//player.isVertexStart(moveT, polyCont);
-		movFlag = 4;
-		//if (!player.getPoolSz())
-			tmpVec = { 0, 1 };
-		//player.isVertexStart(moveT, polyCont);
+		movFlag = 3;
+		tmpVec = { 0, 1 };
 	}
 	else if ((GetKeyState(VK_LEFT) & 0x8000) && (GetKeyState(VK_UP) & 0x8000))
 	{
@@ -419,10 +397,44 @@ VOID CALLBACK KeyStateProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 	{
 		wsprintf(sKeyState, TEXT(""));
 	}
-	//player.isVertexStart(moveT, polyCont);
-	//player.setPtVec(tmp);
-	player.move(moveT, tmpVec, movFlag);
-	//player.collision(moveT, polyCont);
+	player.move(moveT, tmpVec, polyVertexCont, polyLineCont, movFlag);
 
 	InvalidateRgn(hWnd, NULL, false);
+}
+
+void poolSync()
+{
+	/*for (unsigned int i = 0; i < polyVertexCont.size(); i++)
+		vertexPool[i] = polyVertexCont[i];*/
+	for (unsigned int i = 0; i < polyVertexCont.size(); i++)
+	{
+		vertexPool[i] = polyVertexCont[i];
+		if (polyLineCont.size() == polyVertexCont.size()) break;
+
+		polyLine tmpPL;
+		tmpPL.startVertex = i;
+		tmpPL.endVertex = (i + 1) % polyVertexCont.size();
+
+		if (polyVertexCont[tmpPL.endVertex].x == polyVertexCont[tmpPL.startVertex].x)
+			tmpPL.slope = NODEFSLOPE;
+		else
+			tmpPL.slope =
+			((polyVertexCont[tmpPL.endVertex].y - polyVertexCont[tmpPL.startVertex].y) /
+			(polyVertexCont[tmpPL.endVertex].x - polyVertexCont[tmpPL.startVertex].x));
+
+		if (tmpPL.slope == 0)
+		{
+			if (polyVertexCont[tmpPL.endVertex].x > polyVertexCont[tmpPL.startVertex].x)
+				tmpPL.polyFlag = 3;
+			else tmpPL.polyFlag = 1;
+		}
+		else if (tmpPL.slope == NODEFSLOPE)
+		{
+			if (polyVertexCont[tmpPL.endVertex].y > polyVertexCont[tmpPL.startVertex].y)
+				tmpPL.polyFlag = 0;
+			else tmpPL.polyFlag = 2;
+		}
+
+		polyLineCont.push_back(tmpPL);
+	}
 }
