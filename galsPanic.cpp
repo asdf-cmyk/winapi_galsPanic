@@ -37,6 +37,9 @@ vector<polyLine> polyLineCont;
 
 movingPoint player;
 POINT tmpVec = { 0, 0 };
+int movState = -1;
+
+LONG polyArea = 0;
 
 RECT rectView;
 RECT rectView2;
@@ -367,26 +370,31 @@ VOID CALLBACK KeyStateProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 		poolSync();
 		//return;
 	}
-	int movFlag = -1;
+	int movState = 4;
 	//POINT tmpVec = { 0, 0 };
+	bool downKeyFlag = false;
+	if (GetKeyState('A') & 0x8000)
+	{
+		downKeyFlag = true;
+	}
 	if (GetKeyState(VK_LEFT) & 0x8000)
 	{
-		movFlag = 0;
+		movState = 0;
 		tmpVec = { -1, 0 };
 	}
 	else if (GetKeyState(VK_UP) & 0x8000)
 	{
-		movFlag = 1;
+		movState = 1;
 		tmpVec = { 0, -1 };
 	}
 	else if (GetKeyState(VK_RIGHT) & 0x8000)
 	{
-		movFlag = 2;
+		movState = 2;
 		tmpVec = { 1, 0 };
 	}
 	else if (GetKeyState(VK_DOWN) & 0x8000)
 	{
-		movFlag = 3;
+		movState = 3;
 		tmpVec = { 0, 1 };
 	}
 	else if ((GetKeyState(VK_LEFT) & 0x8000) && (GetKeyState(VK_UP) & 0x8000))
@@ -397,7 +405,7 @@ VOID CALLBACK KeyStateProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 	{
 		wsprintf(sKeyState, TEXT(""));
 	}
-	player.move(moveT, tmpVec, polyVertexCont, polyLineCont, movFlag);
+	player.move(moveT, tmpVec, polyVertexCont, polyLineCont, movState, downKeyFlag);
 
 	InvalidateRgn(hWnd, NULL, false);
 }
@@ -425,14 +433,14 @@ void poolSync()
 		if (tmpPL.slope == 0)
 		{
 			if (polyVertexCont[tmpPL.endVertex].x > polyVertexCont[tmpPL.startVertex].x)
-				tmpPL.polyFlag = 3;
-			else tmpPL.polyFlag = 1;
+				tmpPL.polyState = 3;
+			else tmpPL.polyState = 1;
 		}
 		else if (tmpPL.slope == NODEFSLOPE)
 		{
 			if (polyVertexCont[tmpPL.endVertex].y > polyVertexCont[tmpPL.startVertex].y)
-				tmpPL.polyFlag = 0;
-			else tmpPL.polyFlag = 2;
+				tmpPL.polyState = 0;
+			else tmpPL.polyState = 2;
 		}
 
 		polyLineCont.push_back(tmpPL);
