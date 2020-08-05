@@ -181,28 +181,28 @@ void movingPoint::move(POINT& pt, POINT& vec, std::vector<POINT>& polyVertexCont
 }
 
 
-void movingPoint::isVertexStart(POINT& pt, int movFlag,
-	std::vector<POINT>& polyVertexCont, std::vector<polyLine>& polyLineCont)
-{
-	if (movPtCont.size()) return;
-
-	int pLContSz = polyLineCont.size();
-	for (unsigned int i = 0; i < polyVertexCont.size(); i++)
-	{
-		int secondLineIndex = (i + pLContSz - 1) % pLContSz;
-		if ((polyLineCont[i].polyFlag + pLContSz - polyLineCont[secondLineIndex].polyFlag) %
-			pLContSz == 3)
-			continue;
-
-		else if ((pt.x == polyVertexCont[i].x && pt.y == polyVertexCont[i].y) &&
-			!(polyLineCont[i].polyFlag == movFlag) &&
-			!(polyLineCont[secondLineIndex].polyFlag == movFlag)
-			)
-		{
-			pushMovPtPool(pt);
-		}
-	}
-}
+//void movingPoint::isVertexStart(POINT& pt, int movFlag,
+//	std::vector<POINT>& polyVertexCont, std::vector<polyLine>& polyLineCont)
+//{
+//	if (movPtCont.size()) return;
+//
+//	int pLContSz = polyLineCont.size();
+//	for (unsigned int i = 0; i < polyVertexCont.size(); i++)
+//	{
+//		int secondLineIndex = (i + pLContSz - 1) % pLContSz;
+//		if ((polyLineCont[i].polyFlag + pLContSz - polyLineCont[secondLineIndex].polyFlag) %
+//			pLContSz == 3)
+//			continue;
+//
+//		else if ((pt.x == polyVertexCont[i].x && pt.y == polyVertexCont[i].y) &&
+//			!(polyLineCont[i].polyFlag == movFlag) &&
+//			!(polyLineCont[secondLineIndex].polyFlag == movFlag)
+//			)
+//		{
+//			pushMovPtPool(pt);
+//		}
+//	}
+//}
 
 
 void movingPoint::mergePoly(std::vector<POINT>& polyVertexCont,
@@ -224,12 +224,14 @@ void movingPoint::mergePoly(std::vector<POINT>& polyVertexCont,
 			LONG maxX = max(movPtCont[j].x, movPtCont[(j + 1) % movPtContSz].x);
 			LONG minY = min(movPtCont[j].y, movPtCont[(j + 1) % movPtContSz].y);
 			LONG maxY = max(movPtCont[j].y, movPtCont[(j + 1) % movPtContSz].y);
-			if (polyVertexCont[i].x >= minX && polyVertexCont[i].x <= maxX)
+			if (polyVertexCont[i].x >= minX && polyVertexCont[i].x <= maxX &&
+				polyVertexCont[i].y >= min(movPtCont[j - 1].y, movPtCont[j].y) &&
+				polyVertexCont[i].y <= max(movPtCont[j - 1].y, movPtCont[j].y))
 				isInFlag++;
-			else if (polyVertexCont[i].y >= minY && polyVertexCont[i].y <= maxY)
-				isInFlag++;
+			//else if (polyVertexCont[i].y >= minY && polyVertexCont[i].y <= maxY)
+			//	isInFlag++;
 		}
-		if (isInFlag >= 2)
+		if (isInFlag >= 1)
 			removeVertex.push_back(i);
 	}
 
@@ -268,14 +270,14 @@ void movingPoint::mergePoly(std::vector<POINT>& polyVertexCont,
 		{
 			if (polyLineCont[(I + pLSz - 1) % pLSz].polyFlag == 2)
 			{
-				if (!((movPtCont[i].x < movPtCont[movPtCont.size() - 1].x) &&
-					(movPtCont[i].y > movPtCont[movPtCont.size() - 1].y)))
+				if (!((movPtCont[i].x <= movPtCont[movPtCont.size() - 1].x) &&
+					(movPtCont[i].y >= movPtCont[movPtCont.size() - 1].y)))
 					std::reverse(movPtCont.begin(), movPtCont.end());
 			}
 			else if (polyLineCont[(I + pLSz - 1) % pLSz].polyFlag == 0)
 			{
-				if (!((movPtCont[i].x < movPtCont[movPtCont.size() - 1].x) &&
-					(movPtCont[i].y < movPtCont[movPtCont.size() - 1].y)))
+				if (!((movPtCont[i].x <= movPtCont[movPtCont.size() - 1].x) &&
+					(movPtCont[i].y <= movPtCont[movPtCont.size() - 1].y)))
 					std::reverse(movPtCont.begin(), movPtCont.end());
 			}
 		}
@@ -283,14 +285,14 @@ void movingPoint::mergePoly(std::vector<POINT>& polyVertexCont,
 		{
 			if (polyLineCont[(I + pLSz - 1) % pLSz].polyFlag == 3)
 			{
-				if (!((movPtCont[i].x < movPtCont[movPtCont.size() - 1].x) &&
-					(movPtCont[i].y < movPtCont[movPtCont.size() - 1].y)))
+				if (!((movPtCont[i].x <= movPtCont[movPtCont.size() - 1].x) &&
+					(movPtCont[i].y <= movPtCont[movPtCont.size() - 1].y)))
 					std::reverse(movPtCont.begin(), movPtCont.end());
 			}
 			else if (polyLineCont[(I + pLSz - 1) % pLSz].polyFlag == 1)
 			{
-				if (!((movPtCont[i].x > movPtCont[movPtCont.size() - 1].x) &&
-					(movPtCont[i].y < movPtCont[movPtCont.size() - 1].y)))
+				if (!((movPtCont[i].x >= movPtCont[movPtCont.size() - 1].x) &&
+					(movPtCont[i].y <= movPtCont[movPtCont.size() - 1].y)))
 					std::reverse(movPtCont.begin(), movPtCont.end());
 			}
 		}
@@ -298,14 +300,14 @@ void movingPoint::mergePoly(std::vector<POINT>& polyVertexCont,
 		{
 			if (polyLineCont[(I + pLSz - 1) % pLSz].polyFlag == 0)
 			{
-				if (!((movPtCont[i].x > movPtCont[movPtCont.size() - 1].x) &&
-					(movPtCont[i].y < movPtCont[movPtCont.size() - 1].y)))
+				if (!((movPtCont[i].x >= movPtCont[movPtCont.size() - 1].x) &&
+					(movPtCont[i].y <= movPtCont[movPtCont.size() - 1].y)))
 					std::reverse(movPtCont.begin(), movPtCont.end());
 			}
 			else if (polyLineCont[(I + pLSz - 1) % pLSz].polyFlag == 2)
 			{
-				if (!((movPtCont[i].x > movPtCont[movPtCont.size() - 1].x) &&
-					(movPtCont[i].y > movPtCont[movPtCont.size() - 1].y)))
+				if (!((movPtCont[i].x >= movPtCont[movPtCont.size() - 1].x) &&
+					(movPtCont[i].y >= movPtCont[movPtCont.size() - 1].y)))
 					std::reverse(movPtCont.begin(), movPtCont.end());
 			}
 		}
@@ -313,24 +315,31 @@ void movingPoint::mergePoly(std::vector<POINT>& polyVertexCont,
 		{
 			if (polyLineCont[(I + pLSz - 1) % pLSz].polyFlag == 1)
 			{
-				if (!((movPtCont[i].x > movPtCont[movPtCont.size() - 1].x) &&
-					(movPtCont[i].y > movPtCont[movPtCont.size() - 1].y)))
+				if (!((movPtCont[i].x >= movPtCont[movPtCont.size() - 1].x) &&
+					(movPtCont[i].y >= movPtCont[movPtCont.size() - 1].y)))
 					std::reverse(movPtCont.begin(), movPtCont.end());
 			}
 			else if (polyLineCont[(I + pLSz - 1) % pLSz].polyFlag == 3)
 			{
-				if (!((movPtCont[i].x < movPtCont[movPtCont.size() - 1].x) &&
-					(movPtCont[i].y > movPtCont[movPtCont.size() - 1].y)))
+				if (!((movPtCont[i].x <= movPtCont[movPtCont.size() - 1].x) &&
+					(movPtCont[i].y >= movPtCont[movPtCont.size() - 1].y)))
 					std::reverse(movPtCont.begin(), movPtCont.end());
 			}
 		}
 
 		polyVertexCont.erase(polyVertexCont.begin() + I);
 	}
-	for (unsigned int i = 0; i < movPtCont.size(); i++)
-	{
-		polyVertexCont.insert(polyVertexCont.begin() + I + i, movPtCont[i]);
-	}
+	if(removeVertex.size())
+		for (unsigned int i = 0; i < movPtCont.size(); i++)
+		{
+			polyVertexCont.insert(polyVertexCont.begin() + I + i, movPtCont[i]);
+		}
+	else
+		for (unsigned int i = 0; i < movPtCont.size(); i++)
+		{
+			unsigned int tmp = I + i + 1;
+			polyVertexCont.insert(polyVertexCont.begin() + tmp, movPtCont[i]);
+		}
 
 	collidState = false;
 	movPtCont.clear();
