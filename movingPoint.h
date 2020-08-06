@@ -12,16 +12,17 @@ class movingPoint
 {
 	std::vector<POINT> movPtCont;
 	POINT position, ptVector;
-	int speed;
+	int speed, radius;
 	bool collidState;
 	bool isInLine;
 	bool isVertex;
 	bool isVertex2;
-	bool outPolygon;
+	//bool outPolygon;
 	bool clockWise;
 	LONG areaSize;
 public:
-	movingPoint() : ptVector({ 0, 0 }), speed(5), collidState(false), isInLine(false), isVertex(true), isVertex2(false) {}
+	movingPoint() : ptVector({ 0, 0 }), speed(8), radius(10), collidState(false),
+		isInLine(false), isVertex(true), isVertex2(false) {}
 	~movingPoint();
 
 	void pushMovPtPool(POINT& pt);
@@ -30,7 +31,7 @@ public:
 	void collision(POINT&, std::vector<POINT>&);
 	void mergePoly(std::vector<POINT>&, std::vector<polyLine>&);
 	//void isVertexStart(POINT&, int, std::vector<POINT>&, std::vector<polyLine>&);
-	void calMovPtArea();
+	LONG shoelace(std::vector<POINT>&);
 
 
 	std::vector<POINT> getPtCont() { return movPtCont; }

@@ -31,7 +31,7 @@ void movingPoint::show(HDC curHdc, POINT& ptTo)
 		MoveToEx(curHdc, movPtCont[i].x, movPtCont[i].y, NULL);
 		LineTo(curHdc, ptTo.x, ptTo.y);
 	}
-	Ellipse(curHdc, ptTo.x - 2, ptTo.y - 2, ptTo.x + 2, ptTo.y + 2);
+	Ellipse(curHdc, ptTo.x - radius, ptTo.y - radius, ptTo.x + radius, ptTo.y + radius);
 }
 
 
@@ -109,7 +109,8 @@ void movingPoint::move(POINT& pt, POINT& vec, std::vector<POINT>& polyVertexCont
 			!(polyLineCont[secondLineIndex].polyState == movState)
 			)
 		{
-			pushMovPtPool(pt);
+			pushMovPtPool(pt); // starting out of polygon
+			ptVector.x = ptVector.y = 0;
 		}
 		isVertex = false;
 		isInLine = false;
@@ -118,10 +119,10 @@ void movingPoint::move(POINT& pt, POINT& vec, std::vector<POINT>& polyVertexCont
 	{
 		for (lineIndex = 0; lineIndex < lineContSz; lineIndex++)
 		{
-			if (lineIndex == 6)
+			/*if (lineIndex == 6)
 			{
 				int test = 0;
-			}
+			}*/
 			LONG minX = min(polyVertexCont[polyLineCont[lineIndex].startVertex].x,
 				polyVertexCont[polyLineCont[lineIndex].endVertex].x);
 			LONG maxX = max(polyVertexCont[polyLineCont[lineIndex].startVertex].x,
@@ -141,6 +142,7 @@ void movingPoint::move(POINT& pt, POINT& vec, std::vector<POINT>& polyVertexCont
 		}
 	}
 
+	
 	if (movPtCont.size() && (ptVector.x != vec.x) && (ptVector.y != vec.y))
 	{
 		pushMovPtPool(pt);
@@ -148,23 +150,45 @@ void movingPoint::move(POINT& pt, POINT& vec, std::vector<POINT>& polyVertexCont
 		isVertex = false;
 		isVertex2 = false;
 	}
+	/**/
+	if (movPtCont.size())
+	{
+		if ((ptVector.x != 0 && ptVector.x == -1 * vec.x) ||
+			(ptVector.y != 0 && ptVector.y == -1 * vec.y))
+			return;
+	}
 
-	//if (!movPtCont.size())
-	//{
-		if (isInLine)
+	if (movPtCont.size() > 2)
+	{
+		for (unsigned int i = 0; i < movPtCont.size() - 2; i++)
 		{
-			if (movState == polyLineCont[lineIndex].polyState)
-				return;
-			else if(!movPtCont.size() &&
-				(movState+2) % 4 == polyLineCont[lineIndex].polyState)
-				pushMovPtPool(pt);//
+			if (movState == 0)
+			{
+				if (movPtCont[i].x == movPtCont[i + 1].x &&
+					min(movPtCont[i].y, movPtCont[i].y) <= movPtCont[i].y &&
+					movPtCont[i].y <= max(movPtCont[i].y, movPtCont[i].y))
+				{
+					if (pt.x - radius <= movPtCont[i].x)
+						return;
+				}
+			}
 		}
-		else if (isVertex2)
-		{
-			if (movState == polyLineCont[vertexIndex].polyState ||
-				movState == polyLineCont[(vertexIndex + polyVertexCont.size() - 1) % polyVertexCont.size()].polyState)
-				return;
-		}
+	}
+
+	if (isInLine)
+	{
+		if (movState == polyLineCont[lineIndex].polyState)
+			return;
+		else if(!movPtCont.size() &&
+			(movState+2) % 4 == polyLineCont[lineIndex].polyState)
+			pushMovPtPool(pt);//
+	}
+	else if (isVertex2)
+	{
+		if (movState == polyLineCont[vertexIndex].polyState ||
+			movState == polyLineCont[(vertexIndex + polyVertexCont.size() - 1) % polyVertexCont.size()].polyState)
+			return;
+	}
 
 
 	//if (!downKeyFlag)
@@ -176,15 +200,12 @@ void movingPoint::move(POINT& pt, POINT& vec, std::vector<POINT>& polyVertexCont
 	case 0:
 		pt.x -= speed;
 		break;
-
 	case 1:
 		pt.y -= speed;
 		break;
-
 	case 2:
 		pt.x += speed;
 		break;
-
 	case 3:
 		pt.y += speed;
 		break;
@@ -192,50 +213,162 @@ void movingPoint::move(POINT& pt, POINT& vec, std::vector<POINT>& polyVertexCont
 }
 
 
-//void movingPoint::isVertexStart(POINT& pt, int movState,
-//	std::vector<POINT>& polyVertexCont, std::vector<polyLine>& polyLineCont)
-//{
-//	if (movPtCont.size()) return;
-//
-//	int pLContSz = polyLineCont.size();
-//	for (unsigned int i = 0; i < polyVertexCont.size(); i++)
-//	{
-//		int secondLineIndex = (i + pLContSz - 1) % pLContSz;
-//		if ((polyLineCont[i].polyState + pLContSz - polyLineCont[secondLineIndex].polyState) %
-//			pLContSz == 3)
-//			continue;
-//
-//		else if ((pt.x == polyVertexCont[i].x && pt.y == polyVertexCont[i].y) &&
-//			!(polyLineCont[i].polyState == movState) &&
-//			!(polyLineCont[secondLineIndex].polyState == movState)
-//			)
-//		{
-//			pushMovPtPool(pt);
-//		}
-//	}
-//}
-
-
 void movingPoint::mergePoly(std::vector<POINT>& polyVertexCont,
 	std::vector<polyLine>& polyLineCont)
 {
 	if (!movPtCont.size()) return;
 
+	std::vector<POINT> tmpMerge1;
+
+	areaSize = shoelace(movPtCont);
+	if (!clockWise)
+		std::reverse(movPtCont.begin(), movPtCont.end());
+
+	//if (movPtCont.size() == 2)
+	//	if (movPtCont[0].x > movPtCont[1].x || movPtCont[0].y > movPtCont[0].y)
+	//		std::reverse(movPtCont.begin(), movPtCont.end());
+
 	unsigned int lineContSz = polyLineCont.size();
-	/*static*/ unsigned int startLineIndex, endLineIndex;
+	unsigned int startLineIndex = -1, startLineIndex2 = -1, endLineIndex = -1, endLineIndex2 = -1;
+	int lineCnt = 0;
+	bool isMovPtBeginVertex = false, isMovPtEndVertex = false;
 	for (unsigned int i = 0; i < lineContSz; i++)
 	{
-		if (polyVertexCont[0].x)
-		{
+		LONG minX = min(polyVertexCont[polyLineCont[i].startVertex].x,
+			polyVertexCont[polyLineCont[i].endVertex].x);
+		LONG maxX = max(polyVertexCont[polyLineCont[i].startVertex].x,
+			polyVertexCont[polyLineCont[i].endVertex].x);
+		LONG minY = min(polyVertexCont[polyLineCont[i].startVertex].y,
+			polyVertexCont[polyLineCont[i].endVertex].y);
+		LONG maxY = max(polyVertexCont[polyLineCont[i].startVertex].y,
+			polyVertexCont[polyLineCont[i].endVertex].y);
 
+		if ((movPtCont[0].x >= minX) && (movPtCont[0].x <= maxX) &&
+			(movPtCont[0].y >= minY) && (movPtCont[0].y <= maxY))
+		{
+			if (startLineIndex != -1)
+				isMovPtBeginVertex = true;
+			if (startLineIndex == -1)
+				startLineIndex = i;
+			else if (startLineIndex2 == -1)
+				startLineIndex2 = i;
 		}
 
-		if (polyVertexCont[polyVertexCont.size() - 1].x)
+		if ((movPtCont[movPtCont.size() - 1].x >= minX) && (movPtCont[movPtCont.size() - 1].x <= maxX) &&
+			(movPtCont[movPtCont.size() - 1].y >= minY) && (movPtCont[movPtCont.size() - 1].y <= maxY))
 		{
-
+			if (endLineIndex != -1)
+				isMovPtEndVertex = true;
+			if (endLineIndex == -1)
+				endLineIndex = i;
+			else if (endLineIndex2 == -1)
+				endLineIndex2 = i;
 		}
-
 	}
+
+	for (unsigned int i = 0; i < movPtCont.size(); i++)
+		tmpMerge1.push_back(movPtCont[i]);
+
+	bool vertexToLineFlag = false;
+	POINT backup;
+
+	if (isMovPtBeginVertex)
+	{
+		if (polyVertexCont[polyLineCont[startLineIndex2].endVertex].x == movPtCont[0].x &&
+			polyVertexCont[polyLineCont[startLineIndex2].endVertex].y == movPtCont[0].y)
+		{
+			startLineIndex = startLineIndex2;
+		}
+		startLineIndex2 = -1;
+	}
+	if (isMovPtEndVertex)
+	{
+		if (polyVertexCont[polyLineCont[endLineIndex2].startVertex].x == movPtCont[movPtCont.size() - 1].x &&
+			polyVertexCont[polyLineCont[endLineIndex2].startVertex].y == movPtCont[movPtCont.size() - 1].y)
+		{
+			endLineIndex = endLineIndex2;
+		}
+		endLineIndex2 = -1;
+	}
+
+	if (/*startLineIndex2 != -1*/isMovPtBeginVertex)
+	{
+		//backup = tmpMerge1[0];
+		//tmpMerge1.erase(tmpMerge1.begin());
+		if (((movPtCont[0].x == movPtCont[1].x) && (polyLineCont[startLineIndex].slope != 0)) ||
+			((movPtCont[0].x != movPtCont[1].x) && (polyLineCont[startLineIndex].slope == 0)))
+		{
+			vertexToLineFlag = true;
+			tmpMerge1.erase(tmpMerge1.begin());
+			//polyVertexCont.erase(polyVertexCont.begin() + startLineIndex);
+		}
+	}
+	if (/*endLineIndex2 != -1*/isMovPtEndVertex)
+	{
+		//backup = tmpMerge1[tmpMerge1.size() - 1];
+		//tmpMerge1.pop_back();
+		if (((movPtCont[movPtCont.size() - 1].x == movPtCont[movPtCont.size() - 2].x) && (polyLineCont[endLineIndex].slope != 0)) ||
+			((movPtCont[movPtCont.size() - 1].x != movPtCont[movPtCont.size() - 2].x) && (polyLineCont[endLineIndex].slope == 0)))
+		{
+			vertexToLineFlag = true;
+			//polyVertexCont.erase(polyVertexCont.begin() + (endLineIndex + 1) % polyVertexCont.size());
+			tmpMerge1.pop_back();
+			//polyVertexCont.erase(polyVertexCont.begin() + endLineIndex);
+		}
+	}
+
+	if (startLineIndex != endLineIndex)
+	{
+		//for (unsigned int i = 0; i < movPtCont.size(); i++)
+		//	tmpMerge1.push_back(movPtCont[i]);
+
+		for (unsigned int i = endLineIndex; i != startLineIndex; i = (i + 1) % polyVertexCont.size())
+			tmpMerge1.push_back(polyVertexCont[polyLineCont[i].endVertex]);
+
+		LONG tmp1 = shoelace(tmpMerge1);
+		LONG poly = shoelace(polyVertexCont);
+
+		if (shoelace(tmpMerge1) < shoelace(polyVertexCont))
+		{
+			std::reverse(movPtCont.begin(), movPtCont.end());
+			mergePoly(polyVertexCont, polyLineCont);
+			return;
+		}
+	}
+	else
+	{
+		std::vector<POINT> tmpMerge2(tmpMerge1);
+		std::vector<POINT> tmpMerge3(tmpMerge1);
+		for (unsigned int i = !vertexToLineFlag; i <= polyVertexCont.size() - vertexToLineFlag; i++)
+			tmpMerge1.push_back(polyVertexCont[(startLineIndex + i) % polyVertexCont.size()]);
+		for (unsigned int i = polyVertexCont.size(); i >= 1; i--)
+			tmpMerge2.push_back(polyVertexCont[(startLineIndex + i) % polyVertexCont.size()]);
+
+		/*LONG tmp3 = shoelace(tmpMerge3);
+		LONG tmp2 = shoelace(tmpMerge2);
+		LONG tmp1 = shoelace(tmpMerge1);
+		LONG polyArea = shoelace(polyVertexCont);
+		LONG sum23 = tmp2 + polyArea;*/
+
+		if (shoelace(tmpMerge2) < shoelace(tmpMerge3))
+		{
+			if (vertexToLineFlag/* && !(startLineIndex2 != -1 && endLineIndex2 != -1)*/)
+			{
+				/*if (startLineIndex2 != -1)
+					tmpMerge3.insert(tmpMerge3.begin(), backup);
+				else if (endLineIndex2 != -1)
+					tmpMerge3.push_back(backup);*/
+			}
+			tmpMerge1.swap(tmpMerge3);
+		}
+	}
+
+	tmpMerge1.swap(polyVertexCont);
+
+	collidState = false;
+	movPtCont.clear();
+	polyLineCont.clear();
+	ptVector = { 0, 0 };
 
 
 
@@ -331,14 +464,14 @@ void movingPoint::mergePoly(std::vector<POINT>& polyVertexCont,
 			polyVertexCont.insert(polyVertexCont.begin() + tmp, movPtCont[i]);
 		}*/
 
-	collidState = false;
+	/*collidState = false;
 	movPtCont.clear();
 	polyLineCont.clear();
 	ptVector = { 0, 0 };
-	position;
+	position;*/
 }
 
-void movingPoint::calMovPtArea()
+LONG movingPoint::shoelace(std::vector<POINT>& movPtCont)
 {
 	LONG area = 0;
 	for (unsigned int i = 0; i < movPtCont.size(); i++)
@@ -347,8 +480,10 @@ void movingPoint::calMovPtArea()
 		area -= movPtCont[i].y * movPtCont[(i + 1) % movPtCont.size()].x;
 	}
 
-	areaSize = abs(area)/2;
+	//areaSize = abs(area)/2;
 	clockWise = area < 0 ? false : true;
+
+	return abs(area) / 2;
 }
 
 
