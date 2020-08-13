@@ -9,6 +9,8 @@
 #pragma comment(lib, "msimg32.lib")
 
 #define MAX_LOADSTRING 100
+#define windowWidth 800
+#define windowHeight 800
 
 using namespace std;
 
@@ -30,7 +32,6 @@ bool sizeChangeFlag = 0;
 TCHAR sKeyState[128];
 vector<POINT> polyVertexCont;
 POINT vertexPool[1360];
-//bool vertexLine[1360][5];
 POINT moveT, tmp;
 
 vector<polyLine> polyLineCont;
@@ -51,11 +52,10 @@ void DrawBitmapDoubleBuffering(HWND, HDC);
 void CreateBitmap();
 void DrawBitmap(HWND, HDC);
 void DeleteBitmap();
-//void UpdateFrame(HWND);
-//VOID CALLBACK AniProc(HWND, UINT, UINT, DWORD);
 VOID CALLBACK KeyStateProc(HWND, UINT, UINT, DWORD);
-//void territory(HDC, POINT&);
 void poolSync();
+
+void Update();
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -64,41 +64,57 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+	_In_opt_ HINSTANCE hPrevInstance,
+	_In_ LPWSTR    lpCmdLine,
+	_In_ int       nCmdShow)
 {
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+	UNREFERENCED_PARAMETER(hPrevInstance);
+	UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // TODO: Place code here.
+	// TODO: Place code here.
 
-    // Initialize global strings
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_GALSPANIC, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
+	// Initialize global strings
+	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
+	LoadStringW(hInstance, IDC_GALSPANIC, szWindowClass, MAX_LOADSTRING);
+	MyRegisterClass(hInstance);
 
-    // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
-    {
-        return FALSE;
-    }
+	// Perform application initialization:
+	if (!InitInstance(hInstance, nCmdShow))
+	{
+		return FALSE;
+	}
 
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_GALSPANIC));
+	HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_GALSPANIC));
 
-    MSG msg;
+	MSG msg;
 
-    // Main message loop:
-    while (GetMessage(&msg, nullptr, 0, 0))
-    {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-    }
+	// Main message loop:
+	while (true) //(GetMessage(&msg, nullptr, 0, 0))
+	{
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			if (msg.message == WM_QUIT)
+			{
+				break;
+			}
+			else
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+		}
+		/*if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}*/
+		else
+		{
+			//Update();
+		}
+	}
 
-    return (int) msg.wParam;
+	return (int)msg.wParam;
 }
 //
 //  FUNCTION: MyRegisterClass()
@@ -107,23 +123,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 //
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
-    WNDCLASSEXW wcex;
+	WNDCLASSEXW wcex;
 
-    wcex.cbSize = sizeof(WNDCLASSEX);
+	wcex.cbSize = sizeof(WNDCLASSEX);
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_GALSPANIC));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_GALSPANIC);
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+	wcex.style = CS_HREDRAW | CS_VREDRAW;
+	wcex.lpfnWndProc = WndProc;
+	wcex.cbClsExtra = 0;
+	wcex.cbWndExtra = 0;
+	wcex.hInstance = hInstance;
+	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_GALSPANIC));
+	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_GALSPANIC);
+	wcex.lpszClassName = szWindowClass;
+	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
-    return RegisterClassExW(&wcex);
+	return RegisterClassExW(&wcex);
 }
 //
 //   FUNCTION: InitInstance(HINSTANCE, int)
@@ -137,20 +153,20 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-   hInst = hInstance; // Store instance handle in our global variable
+	hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT, 0, windowWidth, windowHeight, nullptr, nullptr, hInstance, nullptr);
 
-   if (!hWnd)
-   {
-      return FALSE;
-   }
+	if (!hWnd)
+	{
+		return FALSE;
+	}
 
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
+	ShowWindow(hWnd, nCmdShow);
+	UpdateWindow(hWnd);
 
-   return TRUE;
+	return TRUE;
 }
 
 //
@@ -165,68 +181,41 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF || _CRTDBG_LEAK_CHECK_DF);
-	//_CrtSetBreakAlloc(203);
 	switch (message)
-    {
+	{
 	case WM_CREATE:
 		CreateBitmap();
-		SetTimer(hWnd, 111, 100, KeyStateProc);
+		SetTimer(hWnd, 111, 60, KeyStateProc);
 		GetClientRect(hWnd, &rectView);
-		polyVertexCont.push_back({ 400, 200 });
-		polyVertexCont.push_back({ 800, 200 });
-		polyVertexCont.push_back({ 800, 500 });
-		polyVertexCont.push_back({ 400, 500 });
+		polyVertexCont.push_back({ bitBack.bmWidth * 2 / 5, bitBack.bmHeight * 2 / 5 });
+		polyVertexCont.push_back({ bitBack.bmWidth * 3 / 5, bitBack.bmHeight * 2 / 5 });
+		polyVertexCont.push_back({ bitBack.bmWidth * 3 / 5, bitBack.bmHeight * 3 / 5 });
+		polyVertexCont.push_back({ bitBack.bmWidth * 2 / 5, bitBack.bmHeight * 3 / 5 });
 		moveT = polyVertexCont[0];
 		tmp = moveT;
 
 		poolSync();
-		//player.pushMovPtPool(polyVertexCont[0]);
+
+		//AllocConsole();
+		//freopen("CONOUT$", "wt", stdout);
 		break;
-    case WM_COMMAND:
-        {
-            int wmId = LOWORD(wParam);
-            // Parse the menu selections:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-        }
-        break;
-	case WM_KEYDOWN:
-		/*switch (wParam)
+	case WM_COMMAND:
+	{
+		int wmId = LOWORD(wParam);
+		// Parse the menu selections:
+		switch (wmId)
 		{
-		case VK_LEFT:
-			if (!(player.getPtVec().x != 1 &&
-				player.getPtVec().y == 0))
-				moveT.x -= 1;
+		case IDM_ABOUT:
+			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
-		case VK_UP:
-			if (!(player.getPtVec().x == 0 &&
-				player.getPtVec().y != 1))
-				moveT.y -= 1;
+		case IDM_EXIT:
+			DestroyWindow(hWnd);
 			break;
-		case VK_RIGHT:
-			if (!(player.getPtVec().x != -1 &&
-				player.getPtVec().y == 0))
-				moveT.x += 1;
-			break;
-		case VK_DOWN:
-			if (!(player.getPtVec().x == 0 &&
-				player.getPtVec().y != -1))
-				moveT.y += 1;
-			break;
-		}*/
-		break;
-	case WM_KEYUP:
-		break;
+		default:
+			return DefWindowProc(hWnd, message, wParam, lParam);
+		}
+	}
+	break;
 	case WM_PAINT:
 	{
 		PAINTSTRUCT ps;
@@ -241,56 +230,59 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 		DeleteBitmap();
 		PostQuitMessage(0);
-		polyVertexCont.clear();
-		//_CrtDumpMemoryLeaks();
+		//FreeConsole();
 		break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-    }
-    return 0;
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+	}
+	return 0;
 }
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message)
+	{
+	case WM_INITDIALOG:
+		return (INT_PTR)TRUE;
 
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
+	case WM_COMMAND:
+		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+		{
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
+	}
+	return (INT_PTR)FALSE;
 }
 
 
-//static int yPos = 0;
 void DrawRectText(HDC hdc)
 {
-	//static int yPos = 0;
-	/*yPos += 5;
-	if (yPos > rectView.bottom) yPos = 0;*/
-	TCHAR strTest[] = _T("텍스트 출력");
-	TextOut(hdc, 10, 0, strTest, _tcslen(strTest));
-	//wsprintf(sKeyState, TEXT("%s"), _T("A-Key"));
-	TextOut(hdc, 100, 0, sKeyState, _tcslen(sKeyState));
+	TCHAR strTest[] = _T("달성률: ");
+	TextOut(hdc, 30, 0, strTest, _tcslen(strTest));
+
+	LONG polyArea = player.shoelace(polyVertexCont);
+	double polyAreaPer = polyArea * 100 / (bitBack.bmWidth * bitBack.bmHeight) * 10 / 9;
+	char buf[64];
+	itoa(polyAreaPer, buf, 10);
+	TCHAR tBuf[64];
+	mbstowcs(tBuf, buf, strlen(buf) + 1);
+	tBuf[strlen(buf)] = '%';
+	tBuf[strlen(buf) + 1] = '\0';
+	TextOut(hdc, 100, 0, tBuf, _tcslen(tBuf));
 }
 
 void CreateBitmap()
 {
 	{
-		hBackImage = (HBITMAP)LoadImage(NULL, TEXT("images/수지.bmp"),
+		hBackImage = (HBITMAP)LoadImage(NULL, TEXT("galsImage/수지1.bmp"),
 			IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
 		GetObject(hBackImage, sizeof(BITMAP), &bitBack);
 	}
 	{
-		hBackImage2 = (HBITMAP)LoadImage(NULL, TEXT("images/boeing1.bmp"),
+		hBackImage2 = (HBITMAP)LoadImage(NULL, TEXT("galsImage/수지2.bmp"),
 			IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
 		GetObject(hBackImage2, sizeof(BITMAP), &bitBack2);
 	}
@@ -333,7 +325,7 @@ void DrawBitmapDoubleBuffering(HWND hWnd, HDC hdc)
 
 		HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(255, 0, 255));
 		HBRUSH oldBrush = (HBRUSH)SelectObject(hMemDC2, myBrush);
-		
+
 		Polygon(hMemDC2, vertexPool, polyVertexCont.size());
 
 		TransparentBlt(hMemDC, 0, 0, bx, by, hMemDC2,
@@ -362,21 +354,18 @@ void DeleteBitmap()
 
 VOID CALLBACK KeyStateProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 {
-	player.collision(moveT, polyVertexCont);
-	if (player.getCollidState() /* &&
-		(player.getPtVec().x != 0 || player.getPtVec().y != 0)*/)
+	bool downKeyFlag = false;
+	if (GetKeyState('A') & 0x8000)
+		downKeyFlag = true;
+
+	player.collision(moveT, polyVertexCont, downKeyFlag);
+	if (player.getCollidState())
 	{
 		player.mergePoly(polyVertexCont, polyLineCont);
 		poolSync();
-		//return;
 	}
+
 	int movState = 4;
-	//POINT tmpVec = { 0, 0 };
-	bool downKeyFlag = false;
-	if (GetKeyState('A') & 0x8000)
-	{
-		downKeyFlag = true;
-	}
 	if (GetKeyState(VK_LEFT) & 0x8000)
 	{
 		movState = 0;
@@ -397,23 +386,17 @@ VOID CALLBACK KeyStateProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 		movState = 3;
 		tmpVec = { 0, 1 };
 	}
-	else if ((GetKeyState(VK_LEFT) & 0x8000) && (GetKeyState(VK_UP) & 0x8000))
-	{
-		wsprintf(sKeyState, TEXT("%s"), _T("LEFT&UP-Key"));
-	}
-	else
-	{
-		wsprintf(sKeyState, TEXT(""));
-	}
-	player.move(moveT, tmpVec, polyVertexCont, polyLineCont, movState, downKeyFlag);
+	player.move(moveT, tmpVec, polyVertexCont, polyLineCont, movState, downKeyFlag, rectView);
 
 	InvalidateRgn(hWnd, NULL, false);
 }
 
+void Update()
+{
+}
+
 void poolSync()
 {
-	/*for (unsigned int i = 0; i < polyVertexCont.size(); i++)
-		vertexPool[i] = polyVertexCont[i];*/
 	for (unsigned int i = 0; i < polyVertexCont.size(); i++)
 	{
 		vertexPool[i] = polyVertexCont[i];

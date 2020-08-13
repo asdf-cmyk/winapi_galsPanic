@@ -17,22 +17,19 @@ class movingPoint
 	bool isInLine;
 	bool isVertex;
 	bool isVertex2;
-	//bool outPolygon;
 	bool clockWise;
 	LONG areaSize;
 public:
-	movingPoint() : ptVector({ 0, 0 }), speed(8), radius(10), collidState(false),
-		isInLine(false), isVertex(true), isVertex2(false) {}
+	movingPoint() : ptVector({ 0, 0 }), speed(10), radius(10), collidState(false),
+		isInLine(false), isVertex(false), isVertex2(false) {}
 	~movingPoint();
 
-	void pushMovPtPool(POINT& pt);
+	void pushMovPtPool(POINT&);
 	void show(HDC, POINT&);
-	void move(POINT&, POINT&, std::vector<POINT>&, std::vector<polyLine>&, int, bool);
-	void collision(POINT&, std::vector<POINT>&);
+	void move(POINT&, POINT&, std::vector<POINT>&, std::vector<polyLine>&, int, bool, RECT);
+	void collision(POINT&, std::vector<POINT>&, bool);
 	void mergePoly(std::vector<POINT>&, std::vector<polyLine>&);
-	//void isVertexStart(POINT&, int, std::vector<POINT>&, std::vector<polyLine>&);
 	LONG shoelace(std::vector<POINT>&);
-
 
 	std::vector<POINT> getPtCont() { return movPtCont; }
 	POINT getPos() { return position; }
@@ -42,4 +39,3 @@ public:
 
 	void setPtVec(POINT& vec) { ptVector = vec; }
 };
-
